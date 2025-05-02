@@ -18,4 +18,11 @@ app.use(
 app.use(e.static("public"));
 app.use(cookieParser());
 
+
+import userRouter from "../src/routes/user.router.js"
+
+app.use("/api/v1/users",userRouter)
+
+
+
 export { app };
