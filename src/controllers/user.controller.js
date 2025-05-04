@@ -2,6 +2,10 @@ import { User } from "../models/user.model.js";
 import { apiError } from "../utils/apiError.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiResponse } from "../utils/apiResponse.js";
+import jwt  from 'jsonwebtoken'
+
+
+
 
 
 const gernerateAccessAndRefrestTokens = async (userId) => {
@@ -103,33 +107,77 @@ const loginUser = asyncHandler(async (req, res) => {
 
 
 
-
 const logOutUser = asyncHandler (async (req,res) =>{
-
-    await User.findByIdAndUpdate(
-        req.user._id,
-        {
-            $set:{
-                refreshToken:undefined
-            }
-        },
-        {
-            new:true
-        }
-    )
-
-
-    const options = {
-      httpOnly: true,
-      secure: true,
-    };
-
-return res
+  
+  await User.findByIdAndUpdate(
+    req.user._id,
+    {
+      $set:{
+        refreshToken:undefined
+      }
+    },
+    {
+      new:true
+    }
+  )
+  
+  
+  const options = {
+    httpOnly: true,
+    secure: true,
+  };
+  
+  return res
   .status(200)
   .clearCookie("accessToken", options)
   .clearCookie("refreshToken", options)
   .json(new ApiResponse(200, {}, "User logged Out"));
+  
+  
+})
 
+
+const refreshAccessToken = asyncHandler (async(req,res)=>{
+   const incomingRefreshToken =  req.cookies?.refreshToken || req.body.refreshToken
+
+ const decodeToken =   jwt.verify(incomingRefreshToken, process.env.REFERESH_TOKEN_SECRET)
+
+  const user = await User.findById(decodeToken?._id)
+  if(!user ){
+    throw new apiError(401,"Invalid refresh token")
+  }
+  const {AccessToken,newRefreshToken}  = await gernerateAccessAndRefrestTokens(user._id)
+  
+  
+  const options = {
+    httpOnly:true,
+    secure:true
+
+  }
+  return res
+  .status(200)
+  .cookie("accessToken",AccessToken,options)
+  .cooke("refreshToken",newRefreshToken,options)
+  .json(new ApiResponse(200,{AccessToken,refreshToken:newRefreshToken},"acces token refreshed"))
+
+
+})
+
+const changePassword = asyncHandler(async(req,res)=>{
+  const {oldPassword,newPassword} = req.body
+    const user = await User.findById( req.user?._id)  
+    if(!user){
+      throw new apiError(400,"user not found")
+    }
+    const isPasswordCorrect = await user.isPasswordCorrect(oldPassword)
+    if(!isPasswordCorrect){
+      throw new apiError(400,"invalid old password")
+    }
+    user.password = newPassword
+    await user.save(({validateBeforeSave:false}))
+
+    return res.status(200)
+    .json(new ApiResponse(200,{},"password change successfully"))
 
 })
 
@@ -137,6 +185,4 @@ return res
 
 
 
-
-
-export { registerUser,loginUser,logOutUser };
+export { registerUser,loginUser,logOutUser,changePassword };
