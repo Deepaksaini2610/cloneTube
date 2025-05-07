@@ -181,8 +181,47 @@ const changePassword = asyncHandler(async(req,res)=>{
 
 })
 
+const getCurrentUser = asyncHandler(async(req,res)=>{
+  return res.status(200).json(200,req.user,"curent user fetched successfully")
+})
+
+const updateAccountDetail = asyncHandler(async(req,res)=>{
+  const { fullName,email } = req.body;
+  if(!fullName || !email){
+    throw new apiError(400,"all fields are required")
+  }
+  
+  User.findByIdAndUpdate(req.user?._id,
+    {
+      fullName:fullName,
+      email:email
+    },
+    {
+      new:true
+    }
+  ).select("-password")
+  return res
+  .status(200)
+  .json(new ApiResponse(200,user,"account details updated successfully"))
+})
 
 
 
 
-export { registerUser,loginUser,logOutUser,changePassword };
+
+// const updateAvatar = asyncHandler(async(req,res)=>{
+// const avatarLocalPath = req.file?.path
+// if(!avatarLocalPath){
+//   throw apiError(400,"avatar file is missing")
+// }
+// const avatar = await upload
+// })
+export { 
+  registerUser,
+  loginUser,
+  logOutUser,
+  changePassword,
+  refreshAccessToken,
+  getCurrentUser,
+  updateAccountDetail
+ };
